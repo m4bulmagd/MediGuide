@@ -37,7 +37,7 @@ exports.handler = async (event) => {
         - If it's not the correct time: ["Your next scheduled dose is at 21:00.", "Do not take this medication now unless instructed by your doctor."]
         - If unrecognized: ["Please ensure the medication label is clear in the photo.", "You can add this medication to your list manually if it's a new prescription."]
 
-    Do not include any other text, explanations, or apologies in your response.`;
+    Do not include any other text, explanations, or apologies in your response. and make sure the response in Arabic language.`;
 
     const userMessage = {
       role: "user",
