@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
-import { getMedications, saveMedications} from '../lib/medicationStore';
+import { getMedications, saveMedications } from '../lib/medicationStore';
 import type { Medication } from '../lib/medicationStore';
-
 import CameraView from './CameraView.js';
 
-// A simple Plus icon component, now smaller for the header
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-    <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+// Icon for manual add
+const ManualIcon = () => (
+  <svg className="w-6 h-6 text-blue-400 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+    <rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" />
+    <path d="M8 12h8M12 8v8" stroke="currentColor" strokeLinecap="round" />
   </svg>
 );
-
 
 export default function MedicationManager() {
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -20,20 +19,13 @@ export default function MedicationManager() {
   const [dosage, setDosage] = useState('');
   const [schedule, setSchedule] = useState<string[]>(['']);
 
-  // Load medications from local storage on initial render
+  // Load medications from local storage
   useEffect(() => {
     setMedications(getMedications());
   }, []);
 
-  const handleAddTime = () => {
-    setSchedule([...schedule, '']);
-  };
-
-  const handleRemoveTime = (index: number) => {
-    const newSchedule = schedule.filter((_, i) => i !== index);
-    setSchedule(newSchedule);
-  };
-
+  const handleAddTime = () => setSchedule([...schedule, '']);
+  const handleRemoveTime = (index: number) => setSchedule(schedule.filter((_, i) => i !== index));
   const handleTimeChange = (index: number, value: string) => {
     const newSchedule = [...schedule];
     newSchedule[index] = value;
@@ -73,7 +65,6 @@ export default function MedicationManager() {
     if (!name || !dosage || schedule.some(time => !time)) return;
 
     const updatedSchedule = schedule.filter(time => time);
-
     let updatedMedications;
 
     if (editingMedication) {
@@ -84,38 +75,35 @@ export default function MedicationManager() {
       );
     } else {
       const newMedication: Medication = {
-        id: new Date().toISOString() + name, // Simple unique ID
+        id: new Date().toISOString() + name,
         name,
         dosage,
         schedule: updatedSchedule,
       };
       updatedMedications = [...medications, newMedication];
     }
-    
+
     setMedications(updatedMedications);
     saveMedications(updatedMedications);
-
     setIsModalOpen(false);
     resetForm();
   };
-  
-  // Handles the data returned from the camera scan
+
   const handlePrescriptionScanned = (scannedMeds: Medication[]) => {
     if (scannedMeds.length === 0) {
       alert("No medications were found on the prescription.");
       return;
     }
 
-    // Filter out any medications that might already be in the list to avoid duplicates
     const newMedsToAdd = scannedMeds.filter(
       scannedMed => !medications.some(existingMed => existingMed.name.toLowerCase() === scannedMed.name.toLowerCase())
     );
 
-    if(newMedsToAdd.length === 0) {
+    if (newMedsToAdd.length === 0) {
       alert("All medications from the scan are already in your list.");
       return;
     }
-    
+
     const updatedMedications = [...medications, ...newMedsToAdd];
     setMedications(updatedMedications);
     saveMedications(updatedMedications);
@@ -126,110 +114,194 @@ export default function MedicationManager() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Your Medications</h1>
-        {/* Add Medication Manually Button */}
-        <div className="flex justify-between items-center mb-4 w-fit space-x-4">
-            <button
-              onClick={handleOpenAddModal}
-              className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition"
-              aria-label="Add new medication manually"
-            >
-              <PlusIcon />
-            </button>
-            <CameraView onPrescriptionScanned={handlePrescriptionScanned} />
+        <h1 className="text-2xl font-bold text-blue-100">Your Medications</h1>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-700 via-blue-600 to-blue-800 text-blue-100 font-bold shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-200 border border-blue-900/40"
+          >
+            <ManualIcon />
+            Add Manually
+          </button>
+          <CameraView onPrescriptionScanned={handlePrescriptionScanned} />
         </div>
-
       </div>
-      
-      {/* List of Medications */}
-      <div className="space-y-2 mb-24">
+
+      <div className="space-y-3 mb-24">
         {medications.length > 0 ? (
           medications.map(med => (
-            <div key={med.id} className="p-3 bg-gray-100 rounded-lg shadow-sm flex justify-between items-center">
+            <div key={med.id} className="p-4 bg-gradient-to-br from-blue-900/60 via-blue-950/80 to-gray-900/80 rounded-xl shadow flex justify-between items-center border border-blue-900/40">
               <div>
-                <p className="font-semibold text-gray-800">{med.name} - {med.dosage}</p>
-                <p className="text-sm text-gray-600">
-                  Take at: {med.schedule.join(', ')}
-                </p>
+                <p className="font-semibold text-blue-100">{med.name} <span className="text-blue-300 font-normal">- {med.dosage}</span></p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {med.schedule.map((t, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center justify-center w-16 h-8 rounded-full bg-blue-800/70 border border-blue-600 text-blue-100 font-semibold text-sm shadow"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="flex items-center space-x-2">
-                <button onClick={() => handleOpenEditModal(med)} className="px-3 py-1 text-sm text-blue-600 bg-blue-100 rounded hover:bg-blue-200">Edit</button>
-                <button onClick={() => handleDelete(med.id)} className="px-3 py-1 text-sm text-red-600 bg-red-100 rounded hover:bg-red-200">Delete</button>
+                <button
+                  onClick={() => handleOpenEditModal(med)}
+                  className="px-3 py-1 text-sm text-blue-200 bg-blue-800/60 rounded hover:bg-blue-700/80 border border-blue-900/40 transition"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(med.id)}
+                  className="px-3 py-1 text-sm text-red-200 bg-red-900/60 rounded hover:bg-red-700/80 border border-red-900/40 transition"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           ))
         ) : (
-          <div className="text-center py-10 px-4 border-2 border-dashed rounded-lg">
-            <p className="text-gray-500">No medications added yet.</p>
-            <p className="text-sm text-gray-400 mt-2">Click the + icon to add one manually or the scan icon to use your camera.</p>
+          <div className="text-center py-10 px-4 border-2 border-dashed border-blue-900/30 rounded-xl bg-blue-950/30">
+            <p className="text-blue-300">No medications added yet.</p>
+            <p className="text-sm text-blue-400 mt-2">Click <span className="font-bold">Add Manually</span> or use the scan icon to add your medications.</p>
           </div>
         )}
       </div>
 
-
-      {/* Modal for the Manual Add/Edit Form */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
-            <h2 className="text-xl font-bold mb-4">{editingMedication ? 'Edit Medication' : 'Add New Medication'}</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">Medication Name</label>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-gradient-to-br from-blue-950/90 via-blue-900/90 to-gray-900/90 rounded-2xl shadow-2xl border border-blue-800/60 p-8 relative">
+            <button
+              onClick={() => { setIsModalOpen(false); resetForm(); }}
+              className="absolute top-4 right-4 text-blue-200 hover:text-blue-400 transition"
+              aria-label="Close"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 className="text-2xl font-bold text-blue-100 mb-6 flex items-center">
+              <ManualIcon />
+              {editingMedication ? "Edit Medication" : "Add Medication"}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-blue-200 font-semibold mb-1">Name</label>
                 <input
                   type="text"
-                  id="name"
+                  className="w-full px-4 py-2 rounded-lg bg-blue-950/60 border border-blue-800 text-blue-100 placeholder-blue-400 focus:ring-2 focus:ring-blue-500 outline-none transition"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  onChange={e => setName(e.target.value)}
+                  placeholder="e.g. Paracetamol"
                   required
                 />
               </div>
-              <div className="mb-4">
-                <label htmlFor="dosage" className="block text-sm font-medium text-gray-700">Dosage (e.g., 10mg)</label>
+              <div>
+                <label className="block text-blue-200 font-semibold mb-1">Dosage</label>
                 <input
                   type="text"
-                  id="dosage"
+                  className="w-full px-4 py-2 rounded-lg bg-blue-950/60 border border-blue-800 text-blue-100 placeholder-blue-400 focus:ring-2 focus:ring-blue-500 outline-none transition"
                   value={dosage}
-                  onChange={(e) => setDosage(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  onChange={e => setDosage(e.target.value)}
+                  placeholder="e.g. 500mg"
                   required
                 />
               </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Schedule</label>
-                {schedule.map((time, index) => (
-                  <div key={index} className="flex items-center mt-2">
-                    <input
-                      type="time"
-                      value={time}
-                      onChange={(e) => handleTimeChange(index, e.target.value)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                    {schedule.length > 1 && (
-                       <button type="button" onClick={() => handleRemoveTime(index)} className="ml-2 text-red-500 font-bold p-1 rounded-full hover:bg-red-100">X</button>
-                    )}
-                  </div>
-                ))}
-                <button type="button" onClick={handleAddTime} className="mt-2 text-sm text-blue-600 hover:underline">
-                  + Add another time
-                </button>
+              <div>
+                <label className="block text-blue-200 font-semibold mb-1">Schedule</label>
+                <div className="space-y-2">
+                  {schedule.map((time, idx) => {
+                    const [hourPart, rest] = time.split(":");
+                    const [minutePart, period] = rest?.split(" ") || ["00", "AM"];
+
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-blue-950/60 border border-blue-800 rounded-full px-3 py-2 shadow">
+                         <input
+                            type="number"
+                            min={1}
+                            max={12}
+                            value={parseInt(hourPart) || ""}
+                            onChange={(e) => {
+                              let val = parseInt(e.target.value);
+                              if (isNaN(val)) val = 1;
+                              if (val < 1) val = 1;
+                              if (val > 12) val = 12;
+                              handleTimeChange(idx, `${val.toString().padStart(2, "0")}:${minutePart} ${period}`);
+                            }}
+                            className="w-12 text-center bg-transparent outline-none text-blue-100 font-semibold"
+                          />
+
+                          <input
+                            type="number"
+                            min={0}
+                            max={59}
+                            value={parseInt(minutePart) || ""}
+                            onChange={(e) => {
+                              let val = parseInt(e.target.value);
+                              if (isNaN(val)) val = 0;
+                              if (val < 0) val = 0;
+                              if (val > 59) val = 59;
+                              handleTimeChange(idx, `${hourPart}:${val.toString().padStart(2, "0")} ${period}`);
+                            }}
+                            className="w-12 text-center bg-transparent outline-none text-blue-100 font-semibold"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleTimeChange(
+                                idx,
+                                `${hourPart}:${minutePart} ${period === "AM" ? "PM" : "AM"}`
+                              )
+                            }
+                            className="ml-2 px-2 py-1 rounded-full bg-blue-700 text-blue-100 font-semibold hover:bg-blue-600 transition"
+                          >
+                            {period}
+                          </button>
+                        </div>
+
+                        {schedule.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTime(idx)}
+                            className="text-red-400 hover:text-red-600 transition p-1 rounded-full"
+                            aria-label="Remove time"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={handleAddTime}
+                    className="mt-2 flex items-center gap-1 text-blue-300 hover:text-blue-400 font-semibold transition"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+                    </svg>
+                    Add Time
+                  </button>
+                </div>
               </div>
 
-              <div className="flex justify-end space-x-4 mt-6">
+              <div className="flex justify-end gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => { setIsModalOpen(false); resetForm(); }}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                  className="px-5 py-2 rounded-lg bg-blue-900/60 text-blue-200 font-semibold hover:bg-blue-800/80 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-5 py-2 rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-700 text-white font-bold shadow hover:scale-105 hover:shadow-xl transition-all duration-200"
                 >
-                  {editingMedication ? 'Save Changes' : 'Save Medication'}
+                  {editingMedication ? "Save Changes" : "Add Medication"}
                 </button>
               </div>
             </form>
