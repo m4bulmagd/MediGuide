@@ -9,30 +9,39 @@ export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // 1. Define the Lambda Function that will process images
+    // IAM policy for Bedrock access
+    const bedrockPolicy = new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0'],
+    });
+
+    // 1. Define the Lambda Function that will process prescriptions
     const scanFunction = new lambda.Function(this, 'ScanPrescriptionFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')), // Code is in the 'lambda' folder
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
     });
+    scanFunction.addToRolePolicy(bedrockPolicy);
 
-    // 2. Grant the Lambda function permission to call Amazon Bedrock
-    scanFunction.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['bedrock:InvokeModel'],
-      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0'],
-
-    }));
+    // 2. Define the Lambda Function that will analyze medications
+    const analyzeFunction = new lambda.Function(this, 'AnalyzeMedicationFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'analyzer.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+    });
+    analyzeFunction.addToRolePolicy(bedrockPolicy);
 
     
     // 3. Define the API Gateway endpoint
     const api = new apigw.RestApi(this, 'MedGuideApi', {
-      // This block is essential for handling preflight requests
       defaultCorsPreflightOptions: {
-        allowOrigins: apigw.Cors.ALL_ORIGINS, // Allows requests from any origin
-        allowMethods: apigw.Cors.ALL_METHODS, // Allows POST, GET, etc.
-        allowHeaders: ['Content-Type'], // Specify allowed headers
+        allowOrigins: apigw.Cors.ALL_ORIGINS,
+        allowMethods: apigw.Cors.ALL_METHODS,
+        allowHeaders: ['Content-Type'],
       }
     });
 
@@ -41,9 +50,19 @@ export class BackendStack extends cdk.Stack {
     scanResource.addMethod('POST', new apigw.LambdaIntegration(scanFunction), {
         apiKeyRequired: false,
       });
-    // 5. Output the API endpoint URL after deployment
-    new cdk.CfnOutput(this, 'ApiUrl', {
-      value: api.url,
+
+    // 5. Create the '/analyze' resource and integrate it with the new Lambda
+    const analyzeResource = api.root.addResource('analyze');
+    analyzeResource.addMethod('POST', new apigw.LambdaIntegration(analyzeFunction), {
+        apiKeyRequired: false,
+      });
+
+    // 6. Output the API endpoint URLs after deployment
+    new cdk.CfnOutput(this, 'ScanApiUrl', {
+      value: api.urlForPath(scanResource.path),
+    });
+    new cdk.CfnOutput(this, 'AnalyzeApiUrl', {
+      value: api.urlForPath(analyzeResource.path),
     });
   }
 }
