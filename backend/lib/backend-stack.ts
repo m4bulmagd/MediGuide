@@ -64,5 +64,62 @@ export class BackendStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'AnalyzeApiUrl', {
       value: api.urlForPath(analyzeResource.path),
     });
+
+    // IAM policy for Polly access
+    const pollyPolicy = new iam.PolicyStatement({
+      actions: ['polly:SynthesizeSpeech'],
+      resources: ['*'],
+    });
+
+    // Define the Lambda Function that will speak text
+    // const speakerFunction = new lambda.Function(this, 'SpeakerFunction', {
+    //   runtime: lambda.Runtime.NODEJS_20_X,
+    //   handler: 'speaker.handler',
+    //   code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+    //   timeout: cdk.Duration.seconds(30),
+    //   memorySize: 512,
+    // });
+    // speakerFunction.addToRolePolicy(pollyPolicy);
+
+    // // Create the '/speak' resource and integrate it with the new Lambda
+    // const speakResource = api.root.addResource('speak');
+    // speakResource.addMethod('POST', new apigw.LambdaIntegration(speakerFunction), {
+    //     apiKeyRequired: false,
+    //   });
+
+    // // Output the new API endpoint URL
+    // new cdk.CfnOutput(this, 'SpeakApiUrl', {
+    //   value: api.urlForPath(speakResource.path),
+    // });
+
+
+
+
+    // Define the Lambda Function that will speak text
+    const speakerFunction = new lambda.Function(this, 'SpeakerFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'speaker.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+    });
+    speakerFunction.addToRolePolicy(pollyPolicy);
+
+    // Add Function URL (simpler than API Gateway for binary responses)
+    const functionUrl = speakerFunction.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowedOrigins: ['*'],
+        allowedMethods: [lambda.HttpMethod.POST],
+        allowedHeaders: ['Content-Type'],
+      },
+    });
+
+    // Output the Function URL
+    new cdk.CfnOutput(this, 'SpeakFunctionUrl', {
+      value: functionUrl.url,
+    });
+
+
   }
 }

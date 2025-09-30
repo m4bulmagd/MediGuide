@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Webcam from "react-webcam";
 import { getMedications } from '../lib/medicationStore';
 import type { Medication } from '../lib/medicationStore';
-
+import ShimmerText from './kokonutui/shimmer-text';
 // Define the expected structure of the analysis response from your API
 interface AnalysisResult {
   summary: string;
@@ -22,8 +22,47 @@ const Analyzer = () => {
       setMedications(getMedications());
     }, []);
 
+    // Speak the analysis result when it's available
+    useEffect(() => {
+      if (analysisResult) {
+        const textToSpeak = `
+          Analysis Summary: ${analysisResult.summary}. 
+          Recommendations: ${analysisResult.recommendations.join(", ")}
+        `;
+        speakText(textToSpeak);
+      }
+    }, [analysisResult]);
+
+    const speakText = async (text: string) => {
+      try {
+        const apiUrl = import.meta.env.VITE_SPEAKER_API_URL;
+        if (!apiUrl) {
+          throw new Error("Speaker API URL is not configured. Make sure VITE_SPEAKER_API_URL is set in your .env file.");
+        }
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch audio.');
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.play();
+
+      } catch (error) {
+        console.error("Error speaking text:", error);
+        alert("There was an error with the text-to-speech service.");
+      }
+    };
+
+
     // Double-tap handler
-    console.log("time ", new Date().toLocaleTimeString() );
     const handleDoubleTap = async () => {
       if (webcamRef.current) {
         // @ts-ignore
@@ -76,8 +115,6 @@ const Analyzer = () => {
 
 
   return (
-    <div className="mt-12 px-4">
-
       <div className="max-w-lg rounded-xl overflow-hidden mx-auto">
 
             {/* camera */}
@@ -108,9 +145,9 @@ const Analyzer = () => {
             
         {isProcessing && (
             <div className="bg-gray-400 p-4 border-b-4 border-gray-950">
-                <p className="flex items-center gap-3">
-                    Analyzing...
-                </p>
+                <div className="flex items-center gap-3">
+                  <ShimmerText text="Analyzing..." className="font-mono text-sm" />
+                </div>
             </div>
         )}
 
@@ -155,7 +192,6 @@ const Analyzer = () => {
           </div>
         </div>
       </div>
-    </div>
   )
 }
 

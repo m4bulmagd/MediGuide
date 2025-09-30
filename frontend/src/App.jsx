@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import Analyzer from "./components/Analyzer";
 import MedicationManager from "./components/MedicationManager";
+import SmoothTab from './components/kokonutui/smooth-tab';
 
 export default function App() {
   // const [activeTab, setActiveTab] = useState<"analyzer" | "medications">("analyzer");
-  const [activeTab, setActiveTab] = useState("analyzer");
+  // const [activeTab, setActiveTab] = useState("analyzer");
 
   return (
     <main className="max-w-lg rounded-xl overflow-hidden mx-auto">
-      <div style={{ display: "flex", borderBottom: "1px solid #ccc" }}>
+      {/* <div style={{ display: "flex", borderBottom: "1px solid #ccc" }}>
         <button
           onClick={() => setActiveTab("analyzer")}
           style={{
@@ -39,7 +40,14 @@ export default function App() {
       <div style={{ marginTop: "20px" }}>
         {activeTab === "analyzer" && <Analyzer />}
         {activeTab === "medications" && <MedicationManager />}
-      </div>
+      </div> */}
+
+      <SmoothTab className='h-full'
+      items={[
+        { id: 'analyzer', title: 'Analyzer', cardContent:(<Analyzer />) },
+        { id: 'medications', title: 'Medications', cardContent:(<MedicationManager />) },
+      ]} 
+      defaultTabId="analyzer" />
     </main>
   );
 }
