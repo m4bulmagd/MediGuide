@@ -105,7 +105,7 @@ export default function CameraView({ onPrescriptionScanned }: CameraViewProps) {
       
       // Convert the scanned data into the Medication format for our app
       const newMedications: Medication[] = data.medications.map(med => ({
-        id: new Date().toISOString() + med.name, // Create a unique enough ID
+        id: new Date().getTime(), // Create a unique enough ID
         name: med.name,
         dosage: med.dosage,
         schedule: med.schedule,

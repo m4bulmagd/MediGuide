@@ -12,6 +12,7 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body);
     const base64ImageData = body.image.split(',')[1]; // Remove the "data:image/jpeg;base64," prefix
     const userMedications = body.medications;
+    const alreadyTaken = body.takenToday;
     const currentTime = body.time;
     
     // Get the current time in HH:MM format to pass to the model
@@ -20,30 +21,31 @@ exports.handler = async (event) => {
 
     You will be given:
     1. An image of a single medication.
-    2. A JSON array of the user's saved medications, including their names, dosages, and scheduled times.
+    2. A JSON array of the user's saved medications, including their names, dosages, and scheduled times , and the mediccations that the user has already taken today and when.
     3. The current time.
 
     Your instructions are:
     1.  First, identify the name of the medication in the image.
     2.  Then, check if this medication name exists in the user's saved medication list.
-    3.  If it exists, check its schedule to determine if it is the correct time to take it. A medication should be taken if the current time is within a 30-minute window (before or after) of a scheduled time.
-    4.  Based on your analysis, create a summary and a list of recommendations.
+    3.  If it exists, check its schedule to determine if it is the correct time to take it and make sure it is not taken earlier to prevent overdose. A medication should be taken if the current time is within a 30-minute window (before or after) of a scheduled time and taken it now will not be an overdose.
+    5.  Based on your analysis, create a summary and a list of recommendations.
 
     Return the information ONLY as a valid JSON object with a single key "analysis".
     The "analysis" object should have the following keys:
-    - "summary": A short, human-readable summary of the analysis (e.g., "It looks like it's time to take your Metformin 500mg.", "This medication is not on your list.", or "It is not the right time for this medication.").
+    - "summary": A short, human-readable summary of the analysis (e.g., "It looks like it's time to take your Metformin 500mg.","It looks like you already took this Salbutamol 30 mins before dont take it it will be an overdose " , "This medication is not on your list.", or "It is not the right time for this medication.").
     - "recommendations": An array of strings with helpful next steps or information. For example:
-        - If it's the correct time: ["Remember to log this dose after you take it.", "Take with a full glass of water."]
+        - If it's the correct time: ["Remember to log this dose after you take it by swipe up or down.", "Take with a full glass of water."]
+        - If it's the correct time but taken before: ["You already took this 1 hour before and it is dangerous take a second dose.", "Do not take this medication now unless instructed by your doctor."]
         - If it's not the correct time: ["Your next scheduled dose is at 21:00.", "Do not take this medication now unless instructed by your doctor."]
         - If unrecognized: ["Please ensure the medication label is clear in the photo.", "You can add this medication to your list manually if it's a new prescription."]
-
+    - "medication_id_found": The ID of the medication from the user's list if found, otherwise null.
     Do not include any other text, explanations, or apologies in your response. and make sure the response in Arabic language.`;
 
     const userMessage = {
       role: "user",
       content: [
         { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64ImageData } },
-        { type: "text", text: `Here is the list of my medications and their schedules: ${JSON.stringify(userMedications)}. The current time is ${currentTime}. Please analyze the medication in the image and provide the JSON output.` }
+        { type: "text", text: `Here is the list of my medications and their schedules: ${JSON.stringify(userMedications)}. The current time is ${currentTime}. and here is the medication already taken today ${JSON.stringify(alreadyTaken)} , Please analyze the medication in the image and provide the JSON output.` }
       ]
     };
 

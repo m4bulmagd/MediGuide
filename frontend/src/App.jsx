@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Analyzer from "./components/Analyzer";
 import MedicationManager from "./components/MedicationManager";
+import Tracker from "./components/Tracker";
 import SmoothTab from './components/kokonutui/smooth-tab';
 
 export default function App() {
@@ -10,6 +11,7 @@ export default function App() {
       items={[
         { id: 'analyzer', title: 'Analyzer', cardContent:(<Analyzer />) },
         { id: 'medications', title: 'Medications', cardContent:(<MedicationManager />) },
+        { id: 'tracker', title: 'Tracker', cardContent:(<Tracker />) },
       ]} 
       defaultTabId="analyzer" />
     </main>

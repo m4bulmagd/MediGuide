@@ -84,7 +84,7 @@ export default function MedicationManager() {
       );
     } else {
       const newMedication: Medication = {
-        id: new Date().toISOString() + name, // Simple unique ID
+        id: new Date().getTime(), // Simple unique ID
         name,
         dosage,
         schedule: updatedSchedule,
