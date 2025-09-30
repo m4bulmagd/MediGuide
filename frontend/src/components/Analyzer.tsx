@@ -3,6 +3,7 @@ import Webcam from "react-webcam";
 import { getMedications } from '../lib/medicationStore';
 import type { Medication } from '../lib/medicationStore';
 import ShimmerText from './kokonutui/shimmer-text';
+
 // Define the expected structure of the analysis response from your API
 interface AnalysisResult {
   summary: string;
@@ -11,11 +12,16 @@ interface AnalysisResult {
 
 const Analyzer = () => {
     const webcamRef = useRef(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const longPressTimer = useRef<NodeJS.Timeout>();
+    const pointerStart = useRef<{ x: number } | null>(null); // For swipe detection
+
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [lastTap, setLastTap] = useState<number>(0);
     const [medications, setMedications] = useState<Medication[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+    const [showOverlay, setShowOverlay] = useState(false);
 
     // Load medications from local storage on initial render
     useEffect(() => {
@@ -34,6 +40,10 @@ const Analyzer = () => {
     }, [analysisResult]);
 
     const speakText = async (text: string) => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+
       try {
         const apiUrl = import.meta.env.VITE_SPEAKER_API_URL;
         if (!apiUrl) {
@@ -53,6 +63,7 @@ const Analyzer = () => {
         const audioBlob = await response.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
+        audioRef.current = audio;
         audio.play();
 
       } catch (error) {
@@ -62,20 +73,19 @@ const Analyzer = () => {
     };
 
 
-    // Double-tap handler
-    const handleDoubleTap = async () => {
+    // Double-tap handler for the camera view
+    const handleCameraDoubleTap = async () => {
       if (webcamRef.current) {
         // @ts-ignore
         const image = webcamRef.current.getScreenshot();
-        setImageSrc(image);
-        
         if (!image) return;
-
+        
+        setImageSrc(image); // Keep this to pass to the API
+        setShowOverlay(true);
         setIsProcessing(true);
         setAnalysisResult(null);
         
         try {
-          // Get the API URL from the environment variable
           const apiUrl = import.meta.env.VITE_ANALYZE_API_URL;
           if (!apiUrl) {
               throw new Error("Analyzer API URL is not configured. Make sure VITE_ANALYZE_API_URL is set in your .env file.");
@@ -103,94 +113,114 @@ const Analyzer = () => {
       }
     };
 
-    // Touch event handler for double-tap
-    const handleTouch = () => {
+    // Touch event handler for double-tap on camera
+    const handleCameraTouch = () => {
       const now = Date.now();
       if (now - lastTap < 300) {
-        handleDoubleTap();
+        handleCameraDoubleTap();
       }
       setLastTap(now);
     };
 
+    // --- New logic for closing the overlay ---
+
+    const closeOverlay = () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
+        setShowOverlay(false);
+        setAnalysisResult(null);
+        setImageSrc(null);
+    };
+
+    // Gesture handlers for the overlay
+    const handlePointerDown = (e: React.PointerEvent) => {
+        pointerStart.current = { x: e.clientX };
+        longPressTimer.current = setTimeout(() => {
+            closeOverlay();
+            pointerStart.current = null; // Prevent swipe from firing after long press
+        }, 800);
+    };
+
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!pointerStart.current) return;
+
+        const deltaX = e.clientX - pointerStart.current.x;
+        // If moved more than 10px, cancel the long press timer
+        if (Math.abs(deltaX) > 10) {
+            if (longPressTimer.current) {
+                clearTimeout(longPressTimer.current);
+            }
+        }
+    };
+
+    const handlePointerUp = (e: React.PointerEvent) => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+        }
+
+        if (!pointerStart.current) return;
+
+        const deltaX = e.clientX - pointerStart.current.x;
+        const swipeThreshold = 50; // Min distance for a swipe
+
+        if (Math.abs(deltaX) > swipeThreshold) {
+            closeOverlay();
+        }
+        
+        pointerStart.current = null;
+    };
 
 
   return (
-      <div className="max-w-lg rounded-xl overflow-hidden mx-auto">
+      <div 
+        className="fixed inset-0 bg-black"
+        onTouchEnd={!showOverlay ? handleCameraTouch : undefined}
+        onDoubleClick={!showOverlay ? handleCameraDoubleTap : undefined}
+      >
+        <Webcam
+          audio={false}
+          ref={webcamRef}
+          screenshotFormat="image/jpeg"
+          className="w-full h-full object-cover"
+          videoConstraints={{
+            facingMode: "environment"
+          }}
+        />
 
-            {/* camera */}
-            <div
-              onTouchEnd={handleTouch}
-              onDoubleClick={handleDoubleTap}
-              className="flex flex-col items-center"
+        {showOverlay && (
+            <div 
+                className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 touch-none"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
             >
-              <Webcam
-                audio={false}
-                ref={webcamRef}
-                screenshotFormat="image/jpeg"
-                className="rounded-lg"
+                <div className="bg-white bg-opacity-20 backdrop-blur-lg rounded-lg p-5 text-white max-w-md w-full text-center">
+                    {isProcessing && (
+                        <>
+                            <ShimmerText text="Analyzing..." className="font-mono text-2xl" />
+                            <p className="text-sm mt-4">Long-press or swipe to cancel</p>
+                        </>
+                    )}
 
-              />
-              <p className="text-xs mt-2 text-gray-600">
-                Double-tap or double-click to capture image for analysis
-              </p>
-              {imageSrc && (
-                <img
-                  src={imageSrc}
-                  alt="Captured"
-                  className="mt-2 rounded-lg border border-blue-300"
-                  width={160}
-                />
-              )}
-            </div>
-            
-        {isProcessing && (
-            <div className="bg-gray-400 p-4 border-b-4 border-gray-950">
-                <div className="flex items-center gap-3">
-                  <ShimmerText text="Analyzing..." className="font-mono text-sm" />
+                    {analysisResult && (
+                        <div>
+                            <h3 className="text-2xl font-bold mb-4">Analysis Result</h3>
+                            <p className="font-semibold text-lg">Summary:</p>
+                            <p className="mb-4">{analysisResult.summary}</p>
+                            <p className="font-semibold text-lg">Recommendations:</p>
+                            <ul className="list-disc list-inside text-left">
+                                {analysisResult.recommendations.map((rec, index) => (
+                                <li key={index}>{rec}</li>
+                                ))}
+                            </ul>
+                            <p className="text-sm mt-4">Long-press or swipe to close</p>
+                        </div>
+                    )}
                 </div>
             </div>
         )}
-
-        {analysisResult && (
-          <div className="bg-gray-400 p-4">
-            <div className="bg-gray-200 rounded-lg p-5 mx-auto">
-              <h3 className="text-lg font-bold mb-2">Analysis Result</h3>
-              <p className="font-semibold">Summary:</p>
-              <p className="mb-4">{analysisResult.summary}</p>
-              <p className="font-semibold">Recommendations:</p>
-              <ul className="list-disc list-inside">
-                {analysisResult.recommendations.map((rec, index) => (
-                  <li key={index}>{rec}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {!isProcessing && !analysisResult && (
-            <div className="bg-gray-400 p-4 border-b-4 border-gray-950">
-              <p className="flex items-center gap-3">
-                details:
-              </p>
-            </div>
-        )}
-
-        <div className="bg-gray-400 p-4">
-          <div className="grid sm:grid-cols-2 gap-4 max-w-lg bg-gray-200 rounded-lg p-5 mx-auto">
-            <div>
-                <h3 className="text-lg font-bold mb-2">Your Medications</h3>
-                {medications.length > 0 ? (
-                    <ul>
-                        {medications.map(med => (
-                            <li key={med.id}>{med.name} - {med.dosage}</li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p>No medications found.</p>
-                )}
-            </div>
-          </div>
-        </div>
       </div>
   )
 }
