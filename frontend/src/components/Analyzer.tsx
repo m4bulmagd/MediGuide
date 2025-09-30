@@ -178,7 +178,7 @@ const Analyzer = () => {
         } else if (Math.abs(deltaY) > swipeThreshold) {
             if (analysisResult && analysisResult.medication_id_found) {
                 const medId = analysisResult.medication_id_found;
-                const medicationToTrack = medications.find(m => m.id === String(medId));
+                const medicationToTrack = medications.find(m => m.id === medId);
 
                 if (medicationToTrack) {
                     const takenAtDate = new Date();
