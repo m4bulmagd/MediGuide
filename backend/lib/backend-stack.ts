@@ -72,30 +72,6 @@ export class BackendStack extends cdk.Stack {
     });
 
     // Define the Lambda Function that will speak text
-    // const speakerFunction = new lambda.Function(this, 'SpeakerFunction', {
-    //   runtime: lambda.Runtime.NODEJS_20_X,
-    //   handler: 'speaker.handler',
-    //   code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
-    //   timeout: cdk.Duration.seconds(30),
-    //   memorySize: 512,
-    // });
-    // speakerFunction.addToRolePolicy(pollyPolicy);
-
-    // // Create the '/speak' resource and integrate it with the new Lambda
-    // const speakResource = api.root.addResource('speak');
-    // speakResource.addMethod('POST', new apigw.LambdaIntegration(speakerFunction), {
-    //     apiKeyRequired: false,
-    //   });
-
-    // // Output the new API endpoint URL
-    // new cdk.CfnOutput(this, 'SpeakApiUrl', {
-    //   value: api.urlForPath(speakResource.path),
-    // });
-
-
-
-
-    // Define the Lambda Function that will speak text
     const speakerFunction = new lambda.Function(this, 'SpeakerFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'speaker.handler',

@@ -1,7 +1,7 @@
 
 const { PollyClient, SynthesizeSpeechCommand } = require("@aws-sdk/client-polly");
 
-const pollyClient = new PollyClient({ region: "us-west-2" });
+const pollyClient = new PollyClient({ region: "eu-west-1" });
 
 exports.handler = async (event) => {
   try {

@@ -69,7 +69,7 @@ export default function Tracker() {
     const localTakenAtString = `${year}-${month}-${day}T${localHours}:${localMinutes}:${localSeconds}`;
 
     const newTrackedMedication: TrackedMedication = {
-      id: new Date().getTime(),
+      id: new Date().getTime()+Math.floor(10000 + Math.random() * 90000),
       name: medicationInfo.name,
       dosage: medicationInfo.dosage,
       takenAt: localTakenAtString, // Save local time string
